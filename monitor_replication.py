@@ -144,6 +144,16 @@ def main():
             LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
             WHERE s.subid = %s ORDER BY s.worker_type, c.relname
         """, (subscription_id,))
+        copy_progress = rows(target, """
+            SELECT n.nspname AS schema, c.relname AS table, p.pid,
+                   p.command, p.type, p.bytes_processed, p.bytes_total,
+                   p.tuples_processed
+            FROM pg_stat_progress_copy p
+            JOIN pg_stat_subscription s ON s.pid = p.pid
+            LEFT JOIN pg_class c ON c.oid = p.relid
+            LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE s.subid = %s ORDER BY n.nspname, c.relname, p.pid
+        """, (subscription_id,))
         errors = rows(target, """
             SELECT apply_error_count, sync_error_count, stats_reset
             FROM pg_stat_subscription_stats WHERE subid = %s
@@ -193,7 +203,8 @@ def main():
             "not_ready_tables": [row for row in table_states if row["state"] != "r"],
             "missing_tables": [".".join(name) for name in sorted(tables - actual_tables)],
             "unexpected_tables": [".".join(name) for name in sorted(actual_tables - tables)],
-            "workers": workers, "error_statistics": errors, "errors_known_zero": known_zero_errors,
+            "workers": workers, "copy_progress": copy_progress,
+            "error_statistics": errors, "errors_known_zero": known_zero_errors,
             "cumulative_errors": cumulative_errors, "error_history_present": error_history_present,
             "new_errors_since_previous_sample": new_errors,
             "source_slot": slot, "initial_copy_complete": complete,
@@ -211,6 +222,12 @@ def main():
                              if new_errors is not None else "unknown (no comparable sample within 15 minutes)")
         print(f"Replication running={running}; healthy={healthy}; "
               f"live apply={len(apply_workers)}, sync={len(sync_workers)}.")
+        for progress in copy_progress:
+            processed_mb = progress["bytes_processed"] / 1_000_000
+            total = (f"{progress['bytes_total'] / 1_000_000:.1f} MB total"
+                     if progress["bytes_total"] else "total unknown")
+            print(f"COPY {progress['schema']}.{progress['table']}: "
+                  f"{processed_mb:.1f} MB, {progress['tuples_processed']} rows processed; {total}.")
         print(f"Cumulative errors: {error_summary}; history_present={error_history_present}.")
         print(f"New errors since previous target sample: {new_error_summary}.")
         print("Source slot: " + (f"active={slot['active']}, plugin={slot['plugin']}, "

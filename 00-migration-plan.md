@@ -2,7 +2,7 @@
 
 Migrate ExplainIT from Supabase PostgreSQL to PostgreSQL 17 on OVH using logical replication, a short write pause, validation, and a defined rollback window.
 
-**Current status:** Subscription `explainit_migration_sub` was created successfully and is copying 24 application tables from Supabase to OVH `explainit`, using source slot `explainit_migration_slot`. The latest saved read-only sample found 23 ready and `trend_videos` copying. User-provided logs identify repeated source statement timeouts; a read-only check confirmed the 120-second default. Apply the prepared subscription-specific timeout fix from target preparation section 12, then verify recovery. FastAPI stays on Supabase; validation and cutover have not been completed.
+**Current status:** Subscription `explainit_migration_sub` is copying 24 application tables from Supabase to OVH `explainit`, using source slot `explainit_migration_slot`. The user applied the subscription-specific timeout fix, and the agent verified it read-only. The latest saved checks found 23 tables ready and increasing `trend_videos` COPY progress, with no new errors between fresh samples. Monitor the remaining copy using target preparation section 13. FastAPI stays on Supabase; validation and cutover have not been completed.
 
 Checked items record work completed in the migration chat; unchecked items remain to be done. See [source assessment](01-source-assessment.md) for findings and [target preparation](02-target-preparation.md) for the next command.
 
@@ -43,7 +43,7 @@ Checked items record work completed in the migration chat; unchecked items remai
 ## Phase 4 — Initial Data Synchronization
 
 - [ ] Keep FastAPI and background writers on Supabase; allow the initial copy to finish.
-- [ ] Monitor table synchronization, apply errors, replication lag, and retained source WAL using `monitor_replication.py`; latest saved check found 23 ready and `trend_videos` copying. Resolve confirmed source statement timeouts with the prepared connection-specific fix, then verify all tables synchronize without new errors.
+- [ ] Monitor table synchronization, apply errors, replication lag, and retained source WAL using `monitor_replication.py`; the source timeout override was applied and verified. Latest checks found 23 ready and increasing `trend_videos` COPY progress without new errors; wait for all 24 tables to synchronize.
 - [ ] Confirm every published table is synchronized; coordinate any schema changes on both databases.
 
 ## Phase 5 — Validate Target

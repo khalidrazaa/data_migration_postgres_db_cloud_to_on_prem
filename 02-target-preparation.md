@@ -2,7 +2,7 @@
 
 **Target database: `explainit`.**
 
-**Status:** Subscription `explainit_migration_sub` and source slot `explainit_migration_slot` were created successfully. The latest saved agent read-only sample found 23 of 24 tables ready and `trend_videos` copying. User-provided logs identify repeated source statement timeouts; a read-only check confirmed the source's 120-second default. Apply the connection-specific fix in section 12 next. FastAPI remains on Supabase; validation, sequence reconciliation, and cutover remain outstanding.
+**Status:** The subscription-specific source timeout fix was applied successfully by the user and independently verified read-only. All other connection fields were preserved. The latest saved agent check found 23 of 24 tables ready, with `trend_videos` copying and no new apply or synchronization errors between fresh samples. Continue monitoring as described in section 13. FastAPI remains on Supabase; validation, sequence reconciliation, and cutover remain outstanding.
 
 Source findings: [01-source-assessment.md](01-source-assessment.md). Full sequence: [00-migration-plan.md](00-migration-plan.md).
 
@@ -449,13 +449,13 @@ $fastApiRepo = 'E:\projects\blogging-system\ei-fastapi-be'
 & "$fastApiRepo\.venv\Scripts\python.exe" '.\monitor_replication.py'
 ```
 
-The monitor uses read-only connections and saves `replication_status.json` with table states, worker/error status, and source-slot metadata. It does not read table contents or subscription connection strings. It separates initial table-copy completion from ongoing replication health. All 24 tables must be `r` before moving to data validation; healthy replication also requires the expected enabled subscription, a live apply worker, an active valid source slot, and zero reported errors.
+The monitor uses read-only connections and saves `replication_status.json` with table states, worker/error status, and source-slot metadata. It does not read table contents or subscription connection strings. It separates initial table-copy completion, replication activity, and cumulative/new errors. All 24 tables must be `r` before moving to data validation. Its health flag requires the expected enabled subscription, a live apply worker, an active valid source slot, and either zero cumulative errors or no increase between comparable samples within 15 minutes. Missing, stale or reset statistics make the error delta unknown.
 
 **Latest saved result (2026-10-22, 06:17 IST):** 23 tables are `r`; `trend_videos` remains `d`. The apply worker and one synchronization worker are live. Cumulative apply errors are `0`; synchronization errors increased from `1` to `2` across samples. The main source slot is active and `reserved`, with acknowledged WAL distance `0` bytes. This does not establish that `trend_videos` has finished copying. A further read-only COPY progress check found an active retry with no blocking database PIDs; the failure cause is still unknown.
 
-Error counters are cumulative. A nonzero count remains visible after a successful retry; its increase here is evidence of another error between samples. Preserve these counters and use worker state, table readiness, subsequent samples, and the actual error log to assess recovery. The monitor's conservative health flag requires zero recorded errors and must not be interpreted as proof that a historical error is still occurring.
+Error counters are cumulative. A nonzero count remains visible after a successful retry; its increase here is evidence of another error between samples. Preserve these counters and use worker state, table readiness, subsequent samples, and the actual error log to assess recovery. The monitor now reports cumulative counts and new errors separately, so historical errors alone do not permanently mark recovered replication unhealthy. A successful status check still does not establish data equality.
 
-**Immediate next step:** In the **OVH MobaXterm SSH terminal**, collect only filtered error and synchronization-worker lines:
+**Diagnostic command used:** In the **OVH MobaXterm SSH terminal**, collect only filtered error and synchronization-worker lines:
 
 ```bash
 sudo docker logs --since 20m postgres-db 2>&1 | grep -E 'ERROR:|FATAL:|synchronization worker.*(exited|started|finished)' | tail -n 30
@@ -463,13 +463,13 @@ sudo docker logs --since 20m postgres-db 2>&1 | grep -E 'ERROR:|FATAL:|synchroni
 
 **Log result:** The user supplied repeated `could not receive data from WAL stream: ERROR: canceling statement due to statement timeout` errors for `trend_videos`, followed by automatic copy-worker retries approximately every 124 seconds. The underlying source timeout was confirmed as `120000` ms using a read-only settings query; the existing subscription connection has no startup-options override. Proceed to section 12. Data equality and application behavior still need validation after initial synchronization; final validation and sequence reconciliation occur around the cutover write pause.
 
-## 12. Remove the source timeout for this subscription — next step
+## 12. Remove the source timeout for this subscription — completed
 
 The large initial COPY is exceeding the source session's two-minute statement timeout. Supabase documents this default and permits session-specific overrides on direct connections: [Supabase timeouts](https://supabase.com/docs/guides/database/postgres/timeouts).
 
 The [repair helper](repair_replication_timeout.py) reads the existing target subscription's connection privately and sets its startup options to `-c statement_timeout=0` using `ALTER SUBSCRIPTION ... CONNECTION`. It checks the target, subscription, source endpoint and existing options, preserves the remaining connection parameters, and suppresses connection strings/passwords in output. Default execution is read-only; `--apply` performs the change. References: [PostgreSQL ALTER SUBSCRIPTION](https://www.postgresql.org/docs/17/sql-altersubscription.html) and [libpq startup options](https://www.postgresql.org/docs/17/libpq-connect.html#LIBPQ-PARAMKEYWORDS).
 
-In **local Windows PowerShell**, from this migration repository with the administration tunnel running:
+**Executed by the user:** In **local Windows PowerShell**, from this migration repository with the administration tunnel running:
 
 ```powershell
 $fastApiRepo = 'E:\projects\blogging-system\ei-fastapi-be'
@@ -478,6 +478,32 @@ $fastApiRepo = 'E:\projects\blogging-system\ei-fastapi-be'
 
 The setting applies only to this subscription's new source sessions. A copy already running with the old timeout can fail once more before its automatic retry picks up the change. Existing table synchronization state is retained. The initial-creation helper was also amended to include this override for future subscriptions; do not rerun it for the existing subscription.
 
-**Result:** Fix prepared; seven offline checks passed for read-only behavior, ALTER-only application, special-character credential preservation, idempotency, guards and secret suppression. The live read-only preflight could not connect because the local forward at `127.0.0.1:15432` was unavailable (`ConnectionRefusedError`, `10061`). Start the saved MobaXterm tunnel before running the repair. Application by the user and recovery verification remain pending. Afterwards, verify all 24 tables reach `r` and the error counters stop increasing before advancing to validation.
+**Result:** Applied successfully by the user. Output confirmed `statement_timeout=0` was configured and verified, with all other connection fields preserved. After the local tunnel became available again, the agent independently ran the helper with `--check`; it reported that the override was already configured and made no change. No source-wide setting was changed.
+
+## 13. Check recovery and finish the initial copy — next step
+
+Fresh read-only samples after the fix found:
+
+| Check | Result |
+| --- | --- |
+| Table states | 23 ready; `trend_videos` copying |
+| COPY progress | Increased from 2.7 MB / 327 rows to 12.6 MB / 1,363 rows |
+| New errors between fresh samples | Apply `0`, synchronization `0` |
+| Historical errors | Apply `0`, synchronization `462`; preserved cumulative counters |
+| Replication | Live apply and copy workers; source slot active and valid |
+| Validation readiness | False; the last table must finish first |
+
+The latest check at 22:25 IST on 2026-10-22 still showed zero new errors, more than three minutes after the observed copy worker started. The copy continued beyond the former two-minute timeout window.
+
+The monitor now includes COPY bytes and rows processed in both terminal output and `replication_status.json`. It labels the total unknown when PostgreSQL does not supply it, and does not calculate a completion percentage from that value.
+
+**Immediate next step:** Wait about five minutes, then run this in **local PowerShell** from the migration repository, with the administration tunnel running:
+
+```powershell
+$fastApiRepo = 'E:\projects\blogging-system\ei-fastapi-be'
+& "$fastApiRepo\.venv\Scripts\python.exe" '.\monitor_replication.py'
+```
+
+Look for increasing COPY progress with no new errors, or all 24 tables ready. Keep FastAPI using Supabase during this copy. Data validation follows after every table reaches `r`.
 
 Sequence reconciliation remains a cutover requirement.
