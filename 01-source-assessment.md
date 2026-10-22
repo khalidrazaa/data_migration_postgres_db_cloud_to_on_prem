@@ -1,6 +1,6 @@
 # Source Assessment — Supabase → OVH PostgreSQL
 
-**Outcome:** Source assessment complete; proceed to target preparation. Target locale and schema compatibility remain pending.
+**Outcome:** Source assessment complete. Target preparation is tracked in [02-target-preparation.md](02-target-preparation.md); the final OVH target name is `explainit`. Compatible definitions for all 24 application tables were verified read-only. The source's 26 public tables include `alembic_version` and `schema_migrations` tracking metadata, excluded from application replication. Source publication and target subscription have been created successfully. The latest saved agent read-only monitor found 23 tables ready and `trend_videos` copying. Target logs and a source settings check identified the source's 120-second statement timeout as the cause of repeated copy retries; a connection-specific fix is prepared in target preparation section 12. Validation, sequence reconciliation, and cutover remain outstanding.
 
 Scope: application objects in `public`. Results are historical findings from the migration chat and existing assessment notes. SQL is consolidated into read-only equivalents for repeatability; it was not rerun for this document. Long inventories are summarized below.
 
@@ -412,5 +412,5 @@ WHERE d.datname = current_database();
 
 ## Next step
 
-Prepare the OVH schema, compare actual object definitions, and complete the target locale check. Sequence reconciliation remains a cutover requirement. Replication setup and cutover are pending.
+Follow [target preparation](02-target-preparation.md) to monitor the running initial copy using `monitor_replication.py` from local PowerShell. Schema comparison evidence is saved in [schema_comparison.json](schema_comparison.json). The findings above remain historical assessment results. Move to data validation after all 24 application tables are ready; sequence reconciliation remains a cutover requirement. Cutover has not started.
 

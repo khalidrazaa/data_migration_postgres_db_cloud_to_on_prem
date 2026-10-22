@@ -1,0 +1,253 @@
+{
+  "collected_at_utc": "2026-10-22T00:47:49.020772+00:00",
+  "target_snapshot_utc": "2026-10-22T00:47:47.500688+00:00",
+  "source_snapshot_utc": "2026-10-22T00:47:49.008818+00:00",
+  "subscription": {
+    "id": 16811,
+    "name": "explainit_migration_sub",
+    "enabled": true,
+    "slot": "explainit_migration_slot",
+    "publications": [
+      "explainit_migration_pub"
+    ]
+  },
+  "expected_tables": [
+    "public.admin_users",
+    "public.article_comments",
+    "public.articles",
+    "public.content_audit",
+    "public.content_qa_reports",
+    "public.content_research_settings",
+    "public.content_runs",
+    "public.content_topic_identifiers",
+    "public.content_topics",
+    "public.content_versions",
+    "public.discovered_trends",
+    "public.draft_prompts",
+    "public.email_otps",
+    "public.host_sites",
+    "public.leads",
+    "public.niche_keywords",
+    "public.niches",
+    "public.popular_scan_settings",
+    "public.public_api_keys",
+    "public.tokens",
+    "public.trend_ideas",
+    "public.trend_items",
+    "public.trend_videos",
+    "public.volume_points"
+  ],
+  "table_state_counts": {
+    "d": 1,
+    "r": 23
+  },
+  "table_states": [
+    {
+      "schema": "public",
+      "table": "admin_users",
+      "state": "r",
+      "relation_lsn": "32/35049FC8"
+    },
+    {
+      "schema": "public",
+      "table": "article_comments",
+      "state": "r",
+      "relation_lsn": "32/3500B4F0"
+    },
+    {
+      "schema": "public",
+      "table": "articles",
+      "state": "r",
+      "relation_lsn": "32/3408B798"
+    },
+    {
+      "schema": "public",
+      "table": "content_audit",
+      "state": "r",
+      "relation_lsn": "32/350196C0"
+    },
+    {
+      "schema": "public",
+      "table": "content_qa_reports",
+      "state": "r",
+      "relation_lsn": "32/340679B8"
+    },
+    {
+      "schema": "public",
+      "table": "content_research_settings",
+      "state": "r",
+      "relation_lsn": "32/350489E0"
+    },
+    {
+      "schema": "public",
+      "table": "content_runs",
+      "state": "r",
+      "relation_lsn": "32/340836F0"
+    },
+    {
+      "schema": "public",
+      "table": "content_topic_identifiers",
+      "state": "r",
+      "relation_lsn": "32/35045AA8"
+    },
+    {
+      "schema": "public",
+      "table": "content_topics",
+      "state": "r",
+      "relation_lsn": "32/3405D690"
+    },
+    {
+      "schema": "public",
+      "table": "content_versions",
+      "state": "r",
+      "relation_lsn": "32/35001400"
+    },
+    {
+      "schema": "public",
+      "table": "discovered_trends",
+      "state": "r",
+      "relation_lsn": "32/34078C50"
+    },
+    {
+      "schema": "public",
+      "table": "draft_prompts",
+      "state": "r",
+      "relation_lsn": "32/340679B8"
+    },
+    {
+      "schema": "public",
+      "table": "email_otps",
+      "state": "r",
+      "relation_lsn": "32/34078C50"
+    },
+    {
+      "schema": "public",
+      "table": "host_sites",
+      "state": "r",
+      "relation_lsn": "32/3407D490"
+    },
+    {
+      "schema": "public",
+      "table": "leads",
+      "state": "r",
+      "relation_lsn": "32/350117A0"
+    },
+    {
+      "schema": "public",
+      "table": "niche_keywords",
+      "state": "r",
+      "relation_lsn": "32/3406F418"
+    },
+    {
+      "schema": "public",
+      "table": "niches",
+      "state": "r",
+      "relation_lsn": "32/3407BEF8"
+    },
+    {
+      "schema": "public",
+      "table": "popular_scan_settings",
+      "state": "r",
+      "relation_lsn": "32/35005390"
+    },
+    {
+      "schema": "public",
+      "table": "public_api_keys",
+      "state": "r",
+      "relation_lsn": "32/3405D690"
+    },
+    {
+      "schema": "public",
+      "table": "tokens",
+      "state": "r",
+      "relation_lsn": "32/3408C5D8"
+    },
+    {
+      "schema": "public",
+      "table": "trend_ideas",
+      "state": "r",
+      "relation_lsn": "32/35045A70"
+    },
+    {
+      "schema": "public",
+      "table": "trend_items",
+      "state": "r",
+      "relation_lsn": "32/3407F8E8"
+    },
+    {
+      "schema": "public",
+      "table": "trend_videos",
+      "state": "d",
+      "relation_lsn": null
+    },
+    {
+      "schema": "public",
+      "table": "volume_points",
+      "state": "r",
+      "relation_lsn": "32/3406F3E0"
+    }
+  ],
+  "not_ready_tables": [
+    {
+      "schema": "public",
+      "table": "trend_videos",
+      "state": "d",
+      "relation_lsn": null
+    }
+  ],
+  "missing_tables": [],
+  "unexpected_tables": [],
+  "workers": [
+    {
+      "worker_type": "apply",
+      "pid": 2651927,
+      "leader_pid": null,
+      "schema": null,
+      "table": null,
+      "received_lsn": "32/38360AF0",
+      "last_msg_send_time": "2026-10-22T00:47:48.126215+00:00",
+      "last_msg_receipt_time": "2026-10-22T00:47:48.194017+00:00",
+      "latest_end_lsn": "32/38360AF0",
+      "latest_end_time": "2026-10-22T00:47:48.126215+00:00"
+    },
+    {
+      "worker_type": "table synchronization",
+      "pid": 2652176,
+      "leader_pid": null,
+      "schema": "public",
+      "table": "trend_videos",
+      "received_lsn": null,
+      "last_msg_send_time": "2026-10-22T00:46:09.902685+00:00",
+      "last_msg_receipt_time": "2026-10-22T00:46:09.902685+00:00",
+      "latest_end_lsn": null,
+      "latest_end_time": "2026-10-22T00:46:09.902685+00:00"
+    }
+  ],
+  "error_statistics": [
+    {
+      "apply_error_count": 0,
+      "sync_error_count": 2,
+      "stats_reset": null
+    }
+  ],
+  "errors_known_zero": false,
+  "source_slot": {
+    "slot_name": "explainit_migration_slot",
+    "plugin": "pgoutput",
+    "slot_type": "logical",
+    "database": "postgres",
+    "active": true,
+    "active_pid": 3882511,
+    "restart_lsn": "32/38360AF0",
+    "confirmed_flush_lsn": "32/38360B28",
+    "wal_status": "reserved",
+    "safe_wal_size": 4308202712,
+    "invalidation_reason": null,
+    "confirmed_lag_bytes": 0,
+    "retained_wal_bytes": 56
+  },
+  "initial_copy_complete": false,
+  "replication_healthy": false,
+  "ready_for_validation": false,
+  "note": "Independent read-only snapshots. Status does not prove data equality or complete cutover."
+}
