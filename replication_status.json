@@ -1,7 +1,7 @@
 {
-  "collected_at_utc": "2026-10-22T17:22:58.494054+00:00",
-  "target_snapshot_utc": "2026-10-22T17:22:57.626299+00:00",
-  "source_snapshot_utc": "2026-10-22T17:22:58.472410+00:00",
+  "collected_at_utc": "2026-10-24T19:24:51.894094+00:00",
+  "target_snapshot_utc": "2026-10-24T19:24:50.665328+00:00",
+  "source_snapshot_utc": "2026-10-24T19:24:51.864147+00:00",
   "subscription": {
     "id": 16811,
     "name": "explainit_migration_sub",
@@ -38,8 +38,7 @@
     "public.volume_points"
   ],
   "table_state_counts": {
-    "d": 1,
-    "r": 23
+    "r": 24
   },
   "table_states": [
     {
@@ -177,8 +176,8 @@
     {
       "schema": "public",
       "table": "trend_videos",
-      "state": "d",
-      "relation_lsn": null
+      "state": "r",
+      "relation_lsn": "33/40000000"
     },
     {
       "schema": "public",
@@ -187,89 +186,56 @@
       "relation_lsn": "32/3406F3E0"
     }
   ],
-  "not_ready_tables": [
-    {
-      "schema": "public",
-      "table": "trend_videos",
-      "state": "d",
-      "relation_lsn": null
-    }
-  ],
+  "not_ready_tables": [],
   "missing_tables": [],
   "unexpected_tables": [],
   "workers": [
     {
-      "worker_type": "apply",
-      "pid": 2701458,
+      "worker_type": null,
+      "pid": null,
       "leader_pid": null,
       "schema": null,
       "table": null,
-      "received_lsn": "33/30000000",
-      "last_msg_send_time": "2026-10-22T17:22:54.390581+00:00",
-      "last_msg_receipt_time": "2026-10-22T17:22:54.456103+00:00",
-      "latest_end_lsn": "33/30000000",
-      "latest_end_time": "2026-10-22T17:22:54.390581+00:00"
-    },
-    {
-      "worker_type": "table synchronization",
-      "pid": 2701476,
-      "leader_pid": null,
-      "schema": "public",
-      "table": "trend_videos",
       "received_lsn": null,
-      "last_msg_send_time": "2026-10-22T16:51:47.650900+00:00",
-      "last_msg_receipt_time": "2026-10-22T16:51:47.650900+00:00",
+      "last_msg_send_time": null,
+      "last_msg_receipt_time": null,
       "latest_end_lsn": null,
-      "latest_end_time": "2026-10-22T16:51:47.650900+00:00"
+      "latest_end_time": null
     }
   ],
-  "copy_progress": [
-    {
-      "schema": "public",
-      "table": "trend_videos",
-      "pid": 2701476,
-      "command": "COPY FROM",
-      "type": "CALLBACK",
-      "bytes_processed": 114843936,
-      "bytes_total": 0,
-      "tuples_processed": 12815
-    }
-  ],
+  "copy_progress": [],
   "error_statistics": [
     {
-      "apply_error_count": 0,
+      "apply_error_count": 20328,
       "sync_error_count": 462,
       "stats_reset": null
     }
   ],
   "errors_known_zero": false,
   "cumulative_errors": {
-    "apply_error_count": 0,
+    "apply_error_count": 20328,
     "sync_error_count": 462
   },
   "error_history_present": true,
-  "new_errors_since_previous_sample": {
-    "apply_error_count": 0,
-    "sync_error_count": 0
-  },
+  "new_errors_since_previous_sample": null,
   "source_slot": {
     "slot_name": "explainit_migration_slot",
     "plugin": "pgoutput",
     "slot_type": "logical",
     "database": "postgres",
-    "active": true,
-    "active_pid": 3950738,
-    "restart_lsn": "33/2F0000F8",
-    "confirmed_flush_lsn": "33/30000000",
+    "active": false,
+    "active_pid": null,
+    "restart_lsn": "33/9F004530",
+    "confirmed_flush_lsn": "33/9F007850",
     "wal_status": "reserved",
-    "safe_wal_size": 4294967296,
+    "safe_wal_size": 2399141888,
     "invalidation_reason": null,
-    "confirmed_lag_bytes": 0,
-    "retained_wal_bytes": 16776968
+    "confirmed_lag_bytes": 1912571824,
+    "retained_wal_bytes": 1912584912
   },
-  "initial_copy_complete": false,
-  "replication_running": true,
-  "replication_healthy": true,
+  "initial_copy_complete": true,
+  "replication_running": false,
+  "replication_healthy": false,
   "ready_for_validation": false,
   "note": "Independent read-only snapshots. Status does not prove data equality or complete cutover."
 }

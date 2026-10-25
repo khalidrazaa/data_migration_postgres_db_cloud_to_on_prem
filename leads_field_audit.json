@@ -1,0 +1,18 @@
+{
+  "collected_at_utc": "2026-10-24T20:10:37.112531+00:00",
+  "source_count": 6,
+  "target_count": 8,
+  "matched_primary_keys": 6,
+  "changed_rows": 6,
+  "source_only": 0,
+  "target_only": 2,
+  "changed_field_counts": {
+    "internal_notes": 6,
+    "status": 6,
+    "updated_at": 6
+  },
+  "notes": [
+    "Field names and aggregate counts only; no row identifiers, values or hashes saved.",
+    "OVH is live; changes require interpretation against application activity."
+  ]
+}

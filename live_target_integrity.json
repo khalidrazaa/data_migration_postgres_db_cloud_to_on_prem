@@ -1,0 +1,69 @@
+{
+  "collected_at_utc": "2026-10-24T20:02:27.412415+00:00",
+  "retained_tables": 19,
+  "foreign_key_checks": [
+    {
+      "constraint": "article_comments_article_id_fkey",
+      "child": "public.article_comments",
+      "parent": "public.articles",
+      "orphan_rows": 0
+    },
+    {
+      "constraint": "content_qa_reports_version_id_fkey",
+      "child": "public.content_qa_reports",
+      "parent": "public.content_versions",
+      "orphan_rows": 0
+    },
+    {
+      "constraint": "content_runs_topic_id_fkey",
+      "child": "public.content_runs",
+      "parent": "public.content_topics",
+      "orphan_rows": 0
+    },
+    {
+      "constraint": "content_topics_article_id_fkey",
+      "child": "public.content_topics",
+      "parent": "public.articles",
+      "orphan_rows": 0
+    },
+    {
+      "constraint": "content_versions_research_id_fkey",
+      "child": "public.content_versions",
+      "parent": "public.content_runs",
+      "orphan_rows": 0
+    },
+    {
+      "constraint": "content_versions_run_id_fkey",
+      "child": "public.content_versions",
+      "parent": "public.content_runs",
+      "orphan_rows": 0
+    },
+    {
+      "constraint": "content_versions_topic_id_fkey",
+      "child": "public.content_versions",
+      "parent": "public.content_topics",
+      "orphan_rows": 0
+    },
+    {
+      "constraint": "niche_keywords_niche_id_fkey",
+      "child": "public.niche_keywords",
+      "parent": "public.niches",
+      "orphan_rows": 0
+    },
+    {
+      "constraint": "public_api_keys_host_site_id_fkey",
+      "child": "public.public_api_keys",
+      "parent": "public.host_sites",
+      "orphan_rows": 0
+    }
+  ],
+  "total_orphan_rows": 0,
+  "indexes_checked": 51,
+  "unhealthy_indexes": [],
+  "incoming_replication_disabled_verified": true,
+  "notes": [
+    "Read-only repeatable-read target snapshot while OVH is live.",
+    "Excluded feature tables were not audited.",
+    "No application rows or sequence values were changed."
+  ]
+}

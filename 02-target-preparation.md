@@ -2,7 +2,7 @@
 
 **Target database: `explainit`.**
 
-**Status:** The subscription-specific source timeout fix was applied successfully by the user and independently verified read-only. All other connection fields were preserved. The latest saved agent check found 23 of 24 tables ready, with `trend_videos` copying and no new apply or synchronization errors between fresh samples. Continue monitoring as described in section 13. FastAPI remains on Supabase; validation, sequence reconciliation, and cutover remain outstanding.
+**Status (2026-10-25 IST):** OVH is live, with the switch reported as roughly 24 October; Supabase writers are stopped. Incoming replication is disabled with zero live workers. Read-only audits found all 431 source records present in the 19-table retained scope, two additional OVH leads, no orphans across nine foreign keys, and 51 healthy indexes. Six existing leads differ only in workflow fields. Eight of the 13 ID sequences are behind existing IDs; section 18 contains the prepared correction. No sequence values have been changed yet. Keep incoming replication disabled.
 
 Source findings: [01-source-assessment.md](01-source-assessment.md). Full sequence: [00-migration-plan.md](00-migration-plan.md).
 
@@ -480,7 +480,7 @@ The setting applies only to this subscription's new source sessions. A copy alre
 
 **Result:** Applied successfully by the user. Output confirmed `statement_timeout=0` was configured and verified, with all other connection fields preserved. After the local tunnel became available again, the agent independently ran the helper with `--check`; it reported that the override was already configured and made no change. No source-wide setting was changed.
 
-## 13. Check recovery and finish the initial copy — next step
+## 13. Check recovery and finish the initial copy — initial copy completed
 
 Fresh read-only samples after the fix found:
 
@@ -504,6 +504,114 @@ $fastApiRepo = 'E:\projects\blogging-system\ei-fastapi-be'
 & "$fastApiRepo\.venv\Scripts\python.exe" '.\monitor_replication.py'
 ```
 
-Look for increasing COPY progress with no new errors, or all 24 tables ready. Keep FastAPI using Supabase during this copy. Data validation follows after every table reaches `r`.
+**Follow-up result (2026-10-25, 00:54 IST):** The agent's live read-only monitor confirmed all 24 tables are `r` and `initial_copy_complete = true`. However, `replication_running = false`, with no apply or synchronization workers; cumulative apply errors are 20,328 and synchronization errors remain 462. The old saved sample was too old to calculate a fresh counter delta. Initial copying has finished, but ongoing replication must recover before validation or cutover.
+
+## 14. Diagnose the ongoing apply failure — error identified
+
+The live target subscription remains enabled, references the expected slot/publication, has `disable_on_error = false`, and has no transaction-skip LSN configured. The target revision remains `c03_youtube_scan_controls`; worker settings remain 4 logical workers and 8 total worker processes. The source slot is inactive, with about 1.91 GB of unacknowledged/retained WAL, status `reserved`, and no invalidation. These checks do not identify the error cause.
+
+The local administration tunnel was initially unavailable; after the user's retry, the agent connected and obtained the live result above. The target sends PostgreSQL errors to Docker stderr (`logging_collector = off`), so the next diagnostic is the filtered container log.
+
+In the **OVH MobaXterm SSH terminal**, run:
+
+```bash
+sudo docker logs --since 10m postgres-db 2>&1 | grep -E 'ERROR:|FATAL:' | tail -n 10
+```
+
+**Log result:** The user reported `ERROR: duplicate key value violates unique constraint "discovered_trends_phrase_key"`. This identifies the current conflict in `discovered_trends`; the earlier `trend_videos` COPY timeout was already fixed. The user prefers to separate trend/YouTube features from this project rather than retain those tables in ongoing replication. Proceed with the prepared scope change in section 15. Validation, source catch-up, sequence reconciliation and cutover remain outstanding.
+
+## 15. Exclude trend/YouTube tables from ongoing replication — superseded after reported OVH switch
+
+**Do not run the `--apply` command below.** After this step was prepared, the user reported that the application already uses OVH. The command's final ENABLE is unsuitable until the live cutover has been assessed; `--apply` is now blocked in code. The manifest subsequently observed at `replication_scope.json` records the 19-table scope, verified at 2026-10-25 01:15 IST. Follow section 16.
+
+Planned exclusions: `public.discovered_trends`, `public.trend_ideas`, `public.trend_items`, `public.trend_videos`, and `public.volume_points`. Keep the other 19 application tables, including shared `niches`, `niche_keywords` and settings. All physical tables and rows remain on both databases; excluded tables will stop receiving replicated changes.
+
+The [exclusion helper](exclude_trend_replication.py) defaults to a read-only check. With `--apply`, it removes the five tables from the source publication, refreshes the enabled target subscription with `copy_data = false`, then disables and waits for workers to exit. It verifies exactly 19 ready relations, saves `replication_scope.json`, and re-enables the subscription so a fresh worker ignores excluded relations. The existing source slot, connection parameters and error counters are preserved. It does not skip an entire source transaction. References: [ALTER PUBLICATION](https://www.postgresql.org/docs/17/sql-alterpublication.html), [ALTER SUBSCRIPTION](https://www.postgresql.org/docs/17/sql-altersubscription.html), and [PostgreSQL apply filtering](https://github.com/postgres/postgres/blob/REL_17_STABLE/src/backend/replication/logical/worker.c#L449-L469).
+
+Checks require the confirmed endpoints, PostgreSQL versions/revisions, unchanged publication properties, a valid existing slot, completed initial copies, and no retained-table foreign key pointing into an excluded table. It supports resuming an interrupted 24-to-19 scope change and suppresses credentials/SQL in errors. If verification fails after disabling, it leaves that last confirmed state for review rather than enabling unverified scope.
+
+**Prepared verification:** 18 offline exclusion checks and six offline scope-manifest checks passed. The live read-only source preflight passed with all 24 original published tables, a valid slot, matching revision and no retained-table FK into the excluded group. The full live preflight could not reach the local target tunnel; it has not changed either database.
+
+From **local PowerShell** in this migration repository, with the saved local-port-15432 tunnel running:
+
+```powershell
+$fastApiRepo = 'E:\projects\blogging-system\ei-fastapi-be'
+& "$fastApiRepo\.venv\Scripts\python.exe" '.\exclude_trend_replication.py' --apply
+```
+
+After it succeeds, `monitor_replication.py` reads the applied manifest and expects 19 ready tables. Until then it continues to expect the original 24 and checks source publication membership against that scope. The original schema comparison remains unchanged as evidence. The 19-table scope contains 13 owned sequences to reconcile at cutover, excluding the five owned by the separated feature.
+
+**Result:** The applied manifest was subsequently observed, and a live apply worker was seen after the user's OVH-switch disclosure. Earlier assumptions that OVH was still receiving no application writes no longer apply. Do not re-enable forward replication or make corrective data writes before reviewing the actual cutover.
+
+## 16. Protect the reported live OVH database — immediate step
+
+The user reported: "i have already switch the db to ovh". A read-only target check then found `explainit_migration_sub` enabled with a live apply PID. Incoming replication can update rows that were changed locally on OVH; see [PostgreSQL replication conflicts](https://www.postgresql.org/docs/17/logical-replication-conflicts.html). The exclusion helper's `--apply` path is now blocked before configuration or database access.
+
+In pgAdmin Query Tool connected to **OVH `explainit`**, with autocommit on, run this command by itself:
+
+```sql
+ALTER SUBSCRIPTION explainit_migration_sub DISABLE;
+```
+
+Verify that the subscription is disabled and all its workers exit before further migration changes. DISABLE stops the replication worker after the command commits: [ALTER SUBSCRIPTION](https://www.postgresql.org/docs/17/sql-altersubscription.html). Preserve both databases, the subscription, source slot, and error history while assessing reconciliation.
+
+**Confirmed user facts:** OVH is live, and Supabase writers have stopped. The user gave the switch date as "yesterday", recorded as approximately 2026-10-24 in the client's timezone; the exact time and the time source writers stopped are not supplied. Read-only post-switch audits are recorded in section 17.
+
+**Result:** The user's pgAdmin attempt returned `subscription does not exist`. The agent verified that subscription OID `16811` still existed, enabled, in OVH `explainit` with the expected slot/publication and a live worker; the user's Query Tool was therefore in a different database context. Using that verified target connection, the agent executed the same authorized `ALTER SUBSCRIPTION ... DISABLE` command with autocommit, then confirmed `subenabled = false` and zero live replication workers. No application rows were modified.
+
+**Source boundary after disabling (2026-10-25, 01:24 IST):** The existing source slot was inactive and valid (`reserved`, no invalidation). `confirmed_flush_lsn` and the observed source current WAL position both equaled `34/13000060`, giving zero unacknowledged WAL. This position is audit evidence, not proof of row equality or preservation of all OVH-only changes made before incoming replication stopped. The physical tables, existing data, subscription, slot and error counters remain preserved.
+
+The disabled state is now intentional. Do not use a monitor's `replication_running = false` as a reason to re-enable it on the live OVH database. Next, review retained-table data and the 13 owned sequences without writes, then choose any corrective action from the actual findings.
+
+## 17. Audit live OVH data and ID sequences — read-only checks completed
+
+The agent ran [live_target_audit.py](live_target_audit.py) against both databases using independent read-only repeatable-read snapshots. It checked live column types and primary keys, compared canonical row values using SHA-256, and verified that incoming replication stayed disabled with no live workers. Text-key comparisons use `COLLATE "C"` to avoid source/target ICU ordering differences. Evidence: [live_target_audit.json](live_target_audit.json).
+
+| Check | Result |
+| --- | --- |
+| Retained tables compared | 19 |
+| Source / OVH rows | 431 / 433 |
+| Source primary keys missing on OVH | 0 |
+| Tables with identical canonical rows | 18 |
+| `leads` | Six shared keys with changed values; two additional OVH keys |
+| Actual foreign-key orphan checks | Nine constraints, zero orphan rows |
+| Index health | All 51 retained-table indexes valid, ready and live |
+| Owned ID sequences | 13 checked; eight behind the occupied ID range |
+
+A field-level follow-up on `leads` found differences only in `status`, `internal_notes` and `updated_at` for the six shared rows; other fields matched. Evidence: [leads_field_audit.json](leads_field_audit.json). Preserve these OVH changes and the two additional leads while interpreting them against production activity; no row repair was performed. Foreign-key and index evidence is in [live_target_integrity.json](live_target_integrity.json).
+
+These checks describe current snapshots, not a reconstruction of every change during the earlier overlap between OVH writes and incoming replication. JSON comparison is canonical-value comparison rather than byte-for-byte JSON formatting. No row contents, per-row keys or hashes are saved in the reports; sequence observations contain aggregate table maxima and counter positions.
+
+## 18. Advance the eight behind ID sequences — next step
+
+The read-only correction preflight checked all 13 retained-owned sequences. Eight require upward adjustment:
+
+| Sequence | Observed next candidate | Existing maximum | Proposed next |
+| --- | ---: | ---: | ---: |
+| `articles_id_seq` | 1 | 62 | 63 |
+| `content_audit_id_seq` | 1 | 108 | 109 |
+| `content_topic_identifiers_id_seq` | 1 | 100 | 101 |
+| `draft_prompts_id_seq` | 1 | 3 | 4 |
+| `host_sites_id_seq` | 2 | 3 | 4 |
+| `niche_keywords_id_seq` | 1 | 212 | 213 |
+| `niches_id_seq` | 1 | 36 | 37 |
+| `public_api_keys_id_seq` | 1 | 5 | 6 |
+
+An upcoming candidate in an occupied range indicates potential duplicate-ID failures; gaps mean the very next insert is not guaranteed to collide. The five remaining sequences passed the observational check. Evidence: [target_sequence_repair_plan.json](target_sequence_repair_plan.json).
+
+The [sequence repair helper](repair_target_sequences.py) defaults to a read-only plan. With `--apply`, it connects only to OVH and uses one bounded transaction. It locks the 13 owner tables, then locks each sequence using a same-owner metadata command. Under those locks it rechecks ownership, defaults, parameters, current positions and table maxima, and transactionally restarts only counters still behind. No application rows or existing IDs are changed; no counter moves backward. Incoming replication must remain disabled. The target was checked for enabled event triggers and none were found.
+
+Writes to the owner tables and sequence allocations may briefly wait; ordinary table reads can continue. Lock timeout is five seconds and transaction timeout is 45 seconds. Guard failures or pre-commit errors roll back pending restarts. See [PostgreSQL transactional sequence restart](https://www.postgresql.org/docs/17/sql-altersequence.html) and [table locking](https://www.postgresql.org/docs/17/explicit-locking.html).
+
+**Checks:** Seven offline repair scenarios passed, including monotonic planning, idempotency, exhaustion rejection, read-only default, mutation order, rollback and secret suppression. The live `--check` preflight passed and saved the plan above. No sequence changes have been applied by the agent.
+
+With the local-port-15432 administration tunnel running, execute in **local PowerShell** from this migration repository:
+
+```powershell
+$fastApiRepo = 'E:\projects\blogging-system\ei-fastapi-be'
+& "$fastApiRepo\.venv\Scripts\python.exe" '.\repair_target_sequences.py' --apply
+```
+
+The helper recomputes all values under locks and verifies all 13 sequences after committing. If commit acknowledgement is uncertain, use `--check` before retrying. **Result:** Prepared; user application and verification of corrected positions are pending.
 
 Sequence reconciliation remains a cutover requirement.

@@ -10,6 +10,7 @@ from psycopg2.extras import RealDictCursor
 from sqlalchemy.exc import SQLAlchemyError
 
 from prepare_target_schema import PreparationError, WORKSPACE
+from migration_scope import effective_tables
 from start_replication import (
     PUBLICATION, SLOT, SUBSCRIPTION, configuration, connect_read_only, require,
 )
@@ -113,7 +114,8 @@ def main():
     phase = "configuration"
     try:
         previous = previous_report()
-        source_parameters, target_parameters, _worker_dsn, tables = configuration()
+        source_parameters, target_parameters, _worker_dsn, original_tables = configuration()
+        tables = effective_tables(original_tables)
         phase = "target connection"
         target = connect_read_only(target_parameters)
         phase = "target status"
@@ -164,6 +166,13 @@ def main():
         source_time = utc_now()
         require(rows(source, "SELECT current_database() AS database, current_user AS role")[0]
                 == {"database": "postgres", "role": "postgres"}, "Unexpected source database or role.")
+        publication_tables = rows(source, """
+            SELECT schemaname AS schema, tablename AS table
+            FROM pg_publication_tables WHERE pubname = %s ORDER BY schemaname, tablename
+        """, (PUBLICATION,))
+        publication_matches_scope = (
+            len(publication_tables) == len(tables)
+            and {(row["schema"], row["table"]) for row in publication_tables} == tables)
         slots = rows(source, """
             SELECT slot_name, plugin, slot_type, database, active, active_pid,
                    restart_lsn::text, confirmed_flush_lsn::text, wal_status,
@@ -175,7 +184,7 @@ def main():
         slot = slots[0] if len(slots) == 1 else None
         states = dict(sorted(Counter(row["state"] for row in table_states).items()))
         actual_tables = {(row["schema"], row["table"]) for row in table_states}
-        complete = (len(table_states) == 24 and actual_tables == tables
+        complete = (len(table_states) == len(tables) and actual_tables == tables
                     and all(row["state"] == "r" for row in table_states))
         apply_workers = [row for row in workers if row["worker_type"] == "apply" and row["pid"]]
         sync_workers = [row for row in workers if row["worker_type"] == "table synchronization" and row["pid"]]
@@ -192,13 +201,16 @@ def main():
                        and slot["plugin"] == "pgoutput" and slot["slot_type"] == "logical"
                        and slot["database"] == "postgres" and slot["wal_status"] in ("reserved", "extended")
                        and slot["invalidation_reason"] is None)
-        running = bool(subscription_ok and apply_workers and slot_ok)
+        running = bool(subscription_ok and apply_workers and slot_ok and publication_matches_scope)
         healthy = running and (known_zero_errors or no_new_errors)
         ready = complete and healthy
         report = {
             "collected_at_utc": utc_now(), "target_snapshot_utc": target_time,
             "source_snapshot_utc": source_time, "subscription": subscription,
             "expected_tables": [".".join(name) for name in sorted(tables)],
+            "excluded_tables": [".".join(name) for name in sorted(original_tables - tables)],
+            "publication_tables": publication_tables,
+            "publication_matches_scope": publication_matches_scope,
             "table_state_counts": states, "table_states": table_states,
             "not_ready_tables": [row for row in table_states if row["state"] != "r"],
             "missing_tables": [".".join(name) for name in sorted(tables - actual_tables)],
@@ -214,7 +226,8 @@ def main():
         }
         OUTPUT.write_text(json.dumps(report, indent=2, default=lambda value:
             value.astimezone(timezone.utc).isoformat()) + "\n", encoding="utf-8")
-        print(f"Initial copy: {states.get('r', 0)}/24 tables ready; states={states}; complete={complete}.")
+        print(f"Initial copy: {states.get('r', 0)}/{len(tables)} tables ready; states={states}; complete={complete}.")
+        print(f"Publication matches scope={publication_matches_scope}; excluded tables={len(original_tables - tables)}.")
         error_summary = (f"apply={cumulative_errors['apply_error_count']}, "
                          f"sync={cumulative_errors['sync_error_count']}" if cumulative_errors is not None
                          else "unknown (statistics unavailable or invalid)")

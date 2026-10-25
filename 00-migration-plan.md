@@ -2,7 +2,7 @@
 
 Migrate ExplainIT from Supabase PostgreSQL to PostgreSQL 17 on OVH using logical replication, a short write pause, validation, and a defined rollback window.
 
-**Current status:** Subscription `explainit_migration_sub` is copying 24 application tables from Supabase to OVH `explainit`, using source slot `explainit_migration_slot`. The user applied the subscription-specific timeout fix, and the agent verified it read-only. The latest saved checks found 23 tables ready and increasing `trend_videos` COPY progress, with no new errors between fresh samples. Monitor the remaining copy using target preparation section 13. FastAPI stays on Supabase; validation and cutover have not been completed.
+**Current status (2026-10-25 IST):** The user confirms OVH is live since roughly 24 October and Supabase writers are stopped. Incoming replication is disabled with zero live workers. Read-only audits of the 19 retained tables found all 431 source keys present, two additional OVH leads, six lead workflow-field changes, no orphans across nine FKs, and 51 healthy indexes. Eight of 13 ID sequences are behind; the prepared correction is target preparation section 18. Keep incoming replication disabled. The original cutover checklist below is work to audit against the actual switch, not instructions to replay.
 
 Checked items record work completed in the migration chat; unchecked items remain to be done. See [source assessment](01-source-assessment.md) for findings and [target preparation](02-target-preparation.md) for the next command.
 
@@ -43,8 +43,8 @@ Checked items record work completed in the migration chat; unchecked items remai
 ## Phase 4 — Initial Data Synchronization
 
 - [ ] Keep FastAPI and background writers on Supabase; allow the initial copy to finish.
-- [ ] Monitor table synchronization, apply errors, replication lag, and retained source WAL using `monitor_replication.py`; the source timeout override was applied and verified. Latest checks found 23 ready and increasing `trend_videos` COPY progress without new errors; wait for all 24 tables to synchronize.
-- [ ] Confirm every published table is synchronized; coordinate any schema changes on both databases.
+- [ ] Apply the prepared trend/YouTube exclusion (five tables), then use `monitor_replication.py` to verify 19 ready tables, apply recovery, no new errors and source WAL catch-up.
+- [x] Confirm initial synchronization finished for all 24 published tables (`r`), verified live read-only on 2026-10-25 IST. Coordinate any later schema changes on both databases.
 
 ## Phase 5 — Validate Target
 
@@ -62,8 +62,8 @@ Checked items record work completed in the migration chat; unchecked items remai
 
 ## Phase 7 — Production Cutover
 
-- [ ] Stop every source writer; record the final source WAL position and wait until OVH has applied through it with all tables synchronized.
-- [ ] Run final source/target count and integrity checks; reconcile all 18 target sequences.
+- [ ] Stop every source writer; record the final source WAL position and wait until OVH has applied through it with all retained tables synchronized.
+- [ ] Run final source/target count and integrity checks for the retained scope; reconcile its 13 owned target sequences after the prepared exclusion is applied (18 in the original full scope).
 - [ ] Disable the forward subscription after catch-up, before enabling application writes on OVH; keep source writers stopped.
 - [ ] Switch FastAPI and background jobs to OVH, restart/redeploy, and run read-only smoke tests.
 - [ ] Re-enable writes on OVH only after checks pass; verify a controlled write.
