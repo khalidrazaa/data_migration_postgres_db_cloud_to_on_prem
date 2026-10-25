@@ -1,0 +1,33 @@
+{
+  "collected_at_utc": "2026-10-25T06:27:21.414506+00:00",
+  "tables": [
+    {
+      "table": "public.leads",
+      "source_count": 6,
+      "target_count": 8,
+      "changed_rows": 6,
+      "source_only": 0,
+      "target_only": 2,
+      "changed_field_counts": {
+        "internal_notes": 6,
+        "status": 6,
+        "updated_at": 6
+      }
+    },
+    {
+      "table": "public.niches",
+      "source_count": 10,
+      "target_count": 10,
+      "changed_rows": 6,
+      "source_only": 0,
+      "target_only": 0,
+      "changed_field_counts": {
+        "last_scanned_at": 6
+      }
+    }
+  ],
+  "notes": [
+    "Aggregate field counts only. No identifiers, values or hashes saved.",
+    "OVH is live; application changes need interpretation against the cutover history."
+  ]
+}

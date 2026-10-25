@@ -1,6 +1,6 @@
 # Source Assessment — Supabase → OVH PostgreSQL
 
-**Outcome:** Source assessment complete. Target preparation is tracked in [02-target-preparation.md](02-target-preparation.md); the final OVH target name is `explainit`. Compatible definitions for all 24 application tables were verified read-only. The source's 26 public tables include `alembic_version` and `schema_migrations` tracking metadata, excluded from application replication. All 24 initial copies finished; the applied trend/YouTube exclusion leaves 19 retained tables. The user confirms OVH is live and Supabase writers are stopped. Incoming replication has been disabled and zero workers verified; the preserved source slot is valid and showed zero unacknowledged WAL at the follow-up check. Final data validation, sequence audits and reconciliation remain outstanding; see target preparation section 16.
+**Outcome: MIGRATION COMPLETE - SUCCESSFUL, accepted by the user on 25 October 2026 (Asia/Calcutta).** Source assessment is complete, and the retained scope is migrated to live OVH `explainit`. All original 24 application tables finished initial copying; the agreed trend/YouTube exclusion leaves 19 validated tables. Final read-only checks accounted for all 431 source IDs, with two additional OVH leads, recorded workflow/scan-timestamp changes, all 13 owned sequences passing, zero orphans across nine foreign keys, and 51 healthy indexes. Supabase writers are stopped as confirmed by the user; incoming replication is disabled with zero workers. See the [completion record](00-migration-plan.md), [executed preparation and validation](02-target-preparation.md), and [machine-readable status](migration_completion.json). Operational follow-ups are recorded separately.
 
 Scope: application objects in `public`. Results are historical findings from the migration chat and existing assessment notes. SQL is consolidated into read-only equivalents for repeatability; it was not rerun for this document. Long inventories are summarized below.
 
@@ -410,7 +410,7 @@ WHERE d.datname = current_database();
 
 **Conclusion:** Run the same check on OVH and resolve locale differences before replication setup. The recorded timezone is session-effective; collation/provider differences require review of sorting and uniqueness behavior. [PostgreSQL 17 locale catalog fields](https://www.postgresql.org/docs/17/catalog-pg-database.html).
 
-## Next step
+## Assessment completion and final status
 
-Follow [target preparation](02-target-preparation.md) to monitor the running initial copy using `monitor_replication.py` from local PowerShell. Schema comparison evidence is saved in [schema_comparison.json](schema_comparison.json). The findings above remain historical assessment results. Move to data validation after all 24 application tables are ready; sequence reconciliation remains a cutover requirement. Cutover has not started.
+The source assessment and accepted 19-table database migration are **complete and successful**. Initial copying, the application switch, retained-data validation, sequence correction, and disabling incoming replication have been recorded. The findings above remain historical assessment results; schema evidence is preserved in [schema_comparison.json](schema_comparison.json). Refer to the [final completion record](00-migration-plan.md) and [migration sign-off](02-target-preparation.md#20-final-migration-sign-off---complete-and-successful). Remaining operational follow-ups are separate from this accepted completion. Keep incoming replication disabled on live OVH.
 

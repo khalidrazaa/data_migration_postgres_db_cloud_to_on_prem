@@ -1,0 +1,139 @@
+{
+  "status": "complete",
+  "outcome": "successful",
+  "completion_date_local": "2026-10-25",
+  "timezone": "Asia/Calcutta",
+  "recorded_at_utc": "2026-10-25T06:58:48.378587+00:00",
+  "acceptance": {
+    "accepted_by": "user",
+    "instruction": "update everything and mark complete migration .. sucessful"
+  },
+  "scope": {
+    "source_provider": "Supabase",
+    "source_database": "postgres",
+    "target_provider": "OVH",
+    "target_database": "explainit",
+    "schema_revision": "c03_youtube_scan_controls",
+    "retained_tables": [
+      "public.admin_users",
+      "public.article_comments",
+      "public.articles",
+      "public.content_audit",
+      "public.content_qa_reports",
+      "public.content_research_settings",
+      "public.content_runs",
+      "public.content_topic_identifiers",
+      "public.content_topics",
+      "public.content_versions",
+      "public.draft_prompts",
+      "public.email_otps",
+      "public.host_sites",
+      "public.leads",
+      "public.niche_keywords",
+      "public.niches",
+      "public.popular_scan_settings",
+      "public.public_api_keys",
+      "public.tokens"
+    ],
+    "excluded_feature_tables": [
+      "public.discovered_trends",
+      "public.trend_ideas",
+      "public.trend_items",
+      "public.trend_videos",
+      "public.volume_points"
+    ],
+    "original_application_tables_initially_copied": 24,
+    "retained_table_count": 19,
+    "existing_excluded_table_data_preserved": true
+  },
+  "verification": {
+    "data_audit_finished_at_utc": "2026-10-25T06:25:48.022781+00:00",
+    "row_totals": {
+      "source_count": 431,
+      "target_count": 433,
+      "identical": 419,
+      "changed": 12,
+      "source_only": 0,
+      "target_only": 2
+    },
+    "canonically_identical_tables": 17,
+    "field_changes": [
+      {
+        "table": "public.leads",
+        "source_count": 6,
+        "target_count": 8,
+        "changed_rows": 6,
+        "source_only": 0,
+        "target_only": 2,
+        "changed_field_counts": {
+          "internal_notes": 6,
+          "status": 6,
+          "updated_at": 6
+        }
+      },
+      {
+        "table": "public.niches",
+        "source_count": 10,
+        "target_count": 10,
+        "changed_rows": 6,
+        "source_only": 0,
+        "target_only": 0,
+        "changed_field_counts": {
+          "last_scanned_at": 6
+        }
+      }
+    ],
+    "owned_sequences_checked": 13,
+    "owned_sequences_requiring_review": 0,
+    "foreign_keys_checked": 9,
+    "orphan_rows": 0,
+    "indexes_checked": 51,
+    "unhealthy_indexes": 0,
+    "sequence_warning_cause": "search_path-dependent default formatting; verifier fixed and read-only verification passed"
+  },
+  "production_state": {
+    "ovh_live": "user_confirmed",
+    "supabase_writers_stopped": "user_confirmed",
+    "application_switch_date_local_approximate": "2026-10-24",
+    "incoming_replication_enabled": false,
+    "live_replication_workers": 0
+  },
+  "evidence": [
+    "live_target_audit.json",
+    "live_target_integrity.json",
+    "live_target_field_changes.json",
+    "target_sequence_repair_verification.json",
+    "target_sequence_repair_plan.json",
+    "schema_comparison.json",
+    "replication_scope.json"
+  ],
+  "post_migration_followups": [
+    {
+      "item": "formal_application_smoke_tests",
+      "status": "no_result_recorded"
+    },
+    {
+      "item": "recoverable_ovh_backup_and_deployment_persistence",
+      "status": "confirmation_pending"
+    },
+    {
+      "item": "migration_subscription_publication_slot_cleanup",
+      "status": "objects_preserved_cleanup_pending"
+    },
+    {
+      "item": "temporary_credential_rotation_and_deployment_notes",
+      "status": "followup_pending"
+    },
+    {
+      "item": "supabase_retirement",
+      "status": "separate_decision_pending"
+    }
+  ],
+  "notes": [
+    "Completion applies to the accepted 19-table database scope.",
+    "Raw audit evidence remains unchanged and retains its collection timestamps.",
+    "Snapshots are independent; OVH is live and documented field changes were preserved.",
+    "Operational follow-ups are not represented as completed tests.",
+    "Keep incoming Supabase replication disabled."
+  ]
+}

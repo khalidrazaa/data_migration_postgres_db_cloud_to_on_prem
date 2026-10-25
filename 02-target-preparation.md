@@ -1,8 +1,10 @@
-# Target Preparation — OVH PostgreSQL
+# Target Preparation and Migration Completion - OVH PostgreSQL
 
 **Target database: `explainit`.**
 
-**Status (2026-10-25 IST):** OVH is live, with the switch reported as roughly 24 October; Supabase writers are stopped. Incoming replication is disabled with zero live workers. Read-only audits found all 431 source records present in the 19-table retained scope, two additional OVH leads, no orphans across nine foreign keys, and 51 healthy indexes. Six existing leads differ only in workflow fields. Eight of the 13 ID sequences are behind existing IDs; section 18 contains the prepared correction. No sequence values have been changed yet. Keep incoming replication disabled.
+**Status: COMPLETE - SUCCESSFUL, accepted by the user on 25 October 2026 (Asia/Calcutta).** The final validated scope contains 19 retained tables. OVH is live and Supabase writers are stopped; incoming replication is disabled with zero live workers. Final read-only checks accounted for all 431 source IDs, two additional OVH leads, zero orphans across nine foreign keys, 51 healthy indexes, and all 13 owned sequences passing. Lead workflow-field and niche scan-timestamp differences are preserved on OVH. The verifier-formatting bug is fixed; no repeat sequence repair is needed. Post-migration follow-ups remain separate in section 19. See [migration_completion.json](migration_completion.json).
+
+**Record usage:** This file preserves the executed migration history. Commands below are historical examples, not instructions to repeat preparation, copying or repair on the live database. The final sign-off is in section 20.
 
 Source findings: [01-source-assessment.md](01-source-assessment.md). Full sequence: [00-migration-plan.md](00-migration-plan.md).
 
@@ -100,7 +102,7 @@ $fastApiRepo = 'E:\projects\blogging-system\ei-fastapi-be'
 Read-only target checks passed: explainit, ICU en-US, empty public schema.
 ```
 
-**Immediate next step:** Prepare the direct source connection in section 6; schema comparison and seed cleanup are complete.
+**Historical next action (completed):** Prepare the direct source connection in section 6; schema comparison and seed cleanup were complete at that stage.
 
 ## 4. Compare source and target — completed
 
@@ -171,7 +173,7 @@ popular_scan_settings    0
 
 If needed later, change an existing Query Tool connection through its connection link beside connection status: **<New Connection>**, choose server/database/user, **Save**, then select the saved connection. See [pgAdmin Change connection](https://www.pgadmin.org/docs/pgadmin4/latest/query_tool.html#change-connection).
 
-## 6. Prepare the direct source replication connection — next step
+## 6. Prepare the direct source replication connection — completed
 
 The current `SOURCE_DATABASE_URL` uses Supabase's session pooler. It works for the SQL assessment and comparison, but Supabase requires a **direct connection** for logical replication; Supavisor pooler connections do not support it. See [Supabase manual replication FAQ](https://supabase.com/docs/guides/database/replication/manual-replication-faq).
 
@@ -255,7 +257,7 @@ After routing is resolved, repeat the direct replication connection test from th
 
 **Read-only readiness refresh:** Source `postgres` has replication privileges; `wal_level = logical`, maximum slots and WAL senders are both `5`, and there are `0` existing slots. The only current publication is `supabase_realtime`. No migration publication or slot has been created. A fresh agent target recheck could not connect because local `127.0.0.1:15432` was refusing connections; reopen the separate MobaXterm tunnel before the next local script that connects to OVH. The successful user-run pgAdmin cleanup remains recorded above.
 
-## 7. Prepare subscriber IPv6 networking — in progress
+## 7. Prepare subscriber IPv6 networking — connectivity completed
 
 In the OVH MobaXterm SSH terminal, create a separate IPv6-only user-defined bridge:
 
@@ -425,7 +427,7 @@ Next: monitor table synchronization and replication lag; this does not complete 
 
 **Apply result:** Successful. The user reported the exact creation messages above. The agent then verified the enabled subscription, expected slot/publication names, active `pgoutput` source slot, and live apply/synchronization workers using read-only queries. Do not rerun the initialization helper; monitoring is the next action. Keep FastAPI and other application writers using Supabase during the initial copy.
 
-## 11. Monitor initial synchronization — next step
+## 11. Monitor initial synchronization — completed
 
 The first agent read-only monitoring sample found:
 
@@ -497,7 +499,7 @@ The latest check at 22:25 IST on 2026-10-22 still showed zero new errors, more t
 
 The monitor now includes COPY bytes and rows processed in both terminal output and `replication_status.json`. It labels the total unknown when PostgreSQL does not supply it, and does not calculate a completion percentage from that value.
 
-**Immediate next step:** Wait about five minutes, then run this in **local PowerShell** from the migration repository, with the administration tunnel running:
+**Historical monitoring action (completed):** Wait about five minutes, then run this in **local PowerShell** from the migration repository, with the administration tunnel running:
 
 ```powershell
 $fastApiRepo = 'E:\projects\blogging-system\ei-fastapi-be'
@@ -518,7 +520,7 @@ In the **OVH MobaXterm SSH terminal**, run:
 sudo docker logs --since 10m postgres-db 2>&1 | grep -E 'ERROR:|FATAL:' | tail -n 10
 ```
 
-**Log result:** The user reported `ERROR: duplicate key value violates unique constraint "discovered_trends_phrase_key"`. This identifies the current conflict in `discovered_trends`; the earlier `trend_videos` COPY timeout was already fixed. The user prefers to separate trend/YouTube features from this project rather than retain those tables in ongoing replication. Proceed with the prepared scope change in section 15. Validation, source catch-up, sequence reconciliation and cutover remain outstanding.
+**Log result:** The user reported `ERROR: duplicate key value violates unique constraint "discovered_trends_phrase_key"`. This identified the conflict in `discovered_trends`; the earlier `trend_videos` COPY timeout was already fixed. The user's decision to separate trend/YouTube features led to section 15's scope change. Subsequent live-target protection, validation and sequence correction are completed in sections 16–18; this log entry is historical.
 
 ## 15. Exclude trend/YouTube tables from ongoing replication — superseded after reported OVH switch
 
@@ -543,7 +545,7 @@ After it succeeds, `monitor_replication.py` reads the applied manifest and expec
 
 **Result:** The applied manifest was subsequently observed, and a live apply worker was seen after the user's OVH-switch disclosure. Earlier assumptions that OVH was still receiving no application writes no longer apply. Do not re-enable forward replication or make corrective data writes before reviewing the actual cutover.
 
-## 16. Protect the reported live OVH database — immediate step
+## 16. Protect the reported live OVH database — completed
 
 The user reported: "i have already switch the db to ovh". A read-only target check then found `explainit_migration_sub` enabled with a live apply PID. Incoming replication can update rows that were changed locally on OVH; see [PostgreSQL replication conflicts](https://www.postgresql.org/docs/17/logical-replication-conflicts.html). The exclusion helper's `--apply` path is now blocked before configuration or database access.
 
@@ -572,19 +574,20 @@ The agent ran [live_target_audit.py](live_target_audit.py) against both database
 | Retained tables compared | 19 |
 | Source / OVH rows | 431 / 433 |
 | Source primary keys missing on OVH | 0 |
-| Tables with identical canonical rows | 18 |
+| Tables with identical canonical rows in the latest check | 17 |
 | `leads` | Six shared keys with changed values; two additional OVH keys |
+| `niches` | Six shared keys differ only in `last_scanned_at` |
 | Actual foreign-key orphan checks | Nine constraints, zero orphan rows |
 | Index health | All 51 retained-table indexes valid, ready and live |
-| Owned ID sequences | 13 checked; eight behind the occupied ID range |
+| Owned ID sequences, latest verification | All 13 checked; zero behind the occupied ID range |
 
-A field-level follow-up on `leads` found differences only in `status`, `internal_notes` and `updated_at` for the six shared rows; other fields matched. Evidence: [leads_field_audit.json](leads_field_audit.json). Preserve these OVH changes and the two additional leads while interpreting them against production activity; no row repair was performed. Foreign-key and index evidence is in [live_target_integrity.json](live_target_integrity.json).
+A field-level follow-up on `leads` found differences only in `status`, `internal_notes` and `updated_at` for the six shared rows; other fields matched. A later fresh audit also found six niche scan-timestamp changes, with no other niche fields changed. Latest field evidence: [live_target_field_changes.json](live_target_field_changes.json). Preserve these live OVH changes and the two additional leads; no row repair was performed. Fresh foreign-key and index evidence is in [live_target_integrity.json](live_target_integrity.json).
 
 These checks describe current snapshots, not a reconstruction of every change during the earlier overlap between OVH writes and incoming replication. JSON comparison is canonical-value comparison rather than byte-for-byte JSON formatting. No row contents, per-row keys or hashes are saved in the reports; sequence observations contain aggregate table maxima and counter positions.
 
-## 18. Advance the eight behind ID sequences — next step
+## 18. Advance the eight behind ID sequences — committed and verified
 
-The read-only correction preflight checked all 13 retained-owned sequences. Eight require upward adjustment:
+The original read-only correction preflight checked all 13 retained-owned sequences. Eight required upward adjustment:
 
 | Sequence | Observed next candidate | Existing maximum | Proposed next |
 | --- | ---: | ---: | ---: |
@@ -597,7 +600,7 @@ The read-only correction preflight checked all 13 retained-owned sequences. Eigh
 | `niches_id_seq` | 1 | 36 | 37 |
 | `public_api_keys_id_seq` | 1 | 5 | 6 |
 
-An upcoming candidate in an occupied range indicates potential duplicate-ID failures; gaps mean the very next insert is not guaranteed to collide. The five remaining sequences passed the observational check. Evidence: [target_sequence_repair_plan.json](target_sequence_repair_plan.json).
+An upcoming candidate in an occupied range indicates potential duplicate-ID failures; gaps mean the very next insert is not guaranteed to collide. The five remaining sequences passed the original observational check. The latest [target_sequence_repair_plan.json](target_sequence_repair_plan.json) is a subsequent read-only plan showing zero remaining corrections.
 
 The [sequence repair helper](repair_target_sequences.py) defaults to a read-only plan. With `--apply`, it connects only to OVH and uses one bounded transaction. It locks the 13 owner tables, then locks each sequence using a same-owner metadata command. Under those locks it rechecks ownership, defaults, parameters, current positions and table maxima, and transactionally restarts only counters still behind. No application rows or existing IDs are changed; no counter moves backward. Incoming replication must remain disabled. The target was checked for enabled event triggers and none were found.
 
@@ -605,13 +608,37 @@ Writes to the owner tables and sequence allocations may briefly wait; ordinary t
 
 **Checks:** Seven offline repair scenarios passed, including monotonic planning, idempotency, exhaustion rejection, read-only default, mutation order, rollback and secret suppression. The live `--check` preflight passed and saved the plan above. No sequence changes have been applied by the agent.
 
-With the local-port-15432 administration tunnel running, execute in **local PowerShell** from this migration repository:
+**Executed by the user:** With the local-port-15432 administration tunnel running, in **local PowerShell** from this migration repository:
 
 ```powershell
 $fastApiRepo = 'E:\projects\blogging-system\ei-fastapi-be'
 & "$fastApiRepo\.venv\Scripts\python.exe" '.\repair_target_sequences.py' --apply
 ```
 
-The helper recomputes all values under locks and verifies all 13 sequences after committing. If commit acknowledgement is uncertain, use `--check` before retrying. **Result:** Prepared; user application and verification of corrected positions are pending.
+**Apply result:** The user's output confirmed that the transaction committed, then reported `Sequence configuration changed after commit`. A fresh read-only check immediately found all 13 positions safe and zero behind. The warning was caused by the helper's verification code: `SET LOCAL search_path` resets at commit, so the same sequence defaults were displayed with `public.` before commit and without it afterward. A read-only comparison reproduced this qualification-only difference; sequence ownership, bindings and parameters were unchanged.
 
-Sequence reconciliation remains a cutover requirement.
+**Fix and verification:** Snapshot setup now normalizes `search_path = pg_catalog` before every metadata read, including after a transaction boundary. Offline regression checks passed for path normalization and separate plan/result reports. A live read-only transaction-boundary test confirmed stable metadata and all 13 sequences safe, with incoming replication still disabled and zero workers. Evidence: [target_sequence_repair_verification.json](target_sequence_repair_verification.json). No sequence repair was repeated. Future `--apply` results use a separate `target_sequence_repair_result.json`, so a later `--check` cannot overwrite them.
+
+**Result:** The user's committed correction is verified. No repeat `--apply` is needed. Database-level migration validation passes for the retained scope; proceed with operational closeout rather than further data correction.
+
+## 19. Post-migration operational follow-ups
+
+- Confirm application read/create/update flows on live OVH using normal application activity.
+- Confirm a recoverable OVH backup and deployment persistence.
+- After the observation/rollback decision, deliberately remove unused migration subscription/publication/slot artifacts. At the latest source check the preserved slot was inactive and valid, retaining about 33.6 MB of WAL.
+- Keep the five separated trend/YouTube tables and their data outside the validated 19-table scope; no source or target tables were dropped.
+
+These follow-ups are outside the user's accepted database-migration completion. Their execution is not established by the database audits. Source retirement and replication-object removal have not been performed as part of this record update. Keep incoming Supabase replication disabled.
+
+## 20. Final migration sign-off - complete and successful
+
+On **25 October 2026 (Asia/Calcutta)**, the user requested: "update everything and mark complete migration .. sucessful". The database migration is recorded as **COMPLETE - SUCCESSFUL** for the agreed 19-table scope, supported by the completed data, sequence, foreign-key and index checks in sections 17-18.
+
+- All 431 source IDs are accounted for on live OVH; the retained-scope snapshots contain 433 OVH rows.
+- The two additional leads and recorded lead workflow/niche scan-timestamp changes remain intact.
+- All 13 retained-owned sequences pass; the committed repair requires no repeat application.
+- Nine foreign-key checks found zero orphans; all 51 retained-table indexes are healthy.
+- Incoming replication is disabled with zero live workers. Supabase application writers are stopped as confirmed by the user.
+- Five trend/YouTube tables are outside the final validated scope, with existing physical data preserved.
+
+The final overview is [00-migration-plan.md](00-migration-plan.md), and the machine-readable completion record is [migration_completion.json](migration_completion.json). Raw schema and audit evidence retain their actual timestamps and results. Unperformed operational follow-ups remain explicitly recorded in section 19.

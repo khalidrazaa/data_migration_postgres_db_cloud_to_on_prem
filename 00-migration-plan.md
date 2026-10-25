@@ -1,88 +1,79 @@
-# Supabase → OVH PostgreSQL Migration Plan
+# Supabase to OVH PostgreSQL Migration - Complete
 
-Migrate ExplainIT from Supabase PostgreSQL to PostgreSQL 17 on OVH using logical replication, a short write pause, validation, and a defined rollback window.
+**Status: COMPLETE - SUCCESSFUL.**
 
-**Current status (2026-10-25 IST):** The user confirms OVH is live since roughly 24 October and Supabase writers are stopped. Incoming replication is disabled with zero live workers. Read-only audits of the 19 retained tables found all 431 source keys present, two additional OVH leads, six lead workflow-field changes, no orphans across nine FKs, and 51 healthy indexes. Eight of 13 ID sequences are behind; the prepared correction is target preparation section 18. Keep incoming replication disabled. The original cutover checklist below is work to audit against the actual switch, not instructions to replay.
+Completed and accepted at the user's request on **25 October 2026 (Asia/Calcutta)**. The database migration is complete for the **19 retained application tables**. OVH `explainit` is live, Supabase application writers are stopped as confirmed by the user, and incoming replication remains disabled.
 
-Checked items record work completed in the migration chat; unchecked items remain to be done. See [source assessment](01-source-assessment.md) for findings and [target preparation](02-target-preparation.md) for the next command.
+This is the final completion record. Historical preparation and executed commands remain in [02-target-preparation.md](02-target-preparation.md); source findings remain in [01-source-assessment.md](01-source-assessment.md). Machine-readable completion status: [migration_completion.json](migration_completion.json).
 
-## Phase 1 — Discovery & Readiness (complete)
+## Final scope
 
-- [x] Confirm versions: Supabase 17.4 (ARM64); OVH 17.11 (x86-64).
-- [x] Inventory 26 `public` tables, extensions, keys, constraints, indexes, functions, triggers, views, RLS, and custom types.
-- [x] Verify logical replication settings, available slots, publications, primary keys, and replica identities.
-- [x] Confirm source Alembic revision matches repository head: `c03_youtube_scan_controls`.
-- [x] Capture 18 sequences and ownership, row counts, sizes, source locale, and empty target application-table baseline.
+| Item | Final result |
+| --- | --- |
+| Source | Supabase database `postgres` |
+| Live target | OVH Docker PostgreSQL, database `explainit`, owner `explainit_admin` |
+| Schema revision | `c03_youtube_scan_controls` |
+| Initial synchronization | All original 24 application tables finished copying |
+| Final validated scope | 19 application tables, with 13 owned ID sequences |
+| Application switch | Approximately 24 October 2026, reported by the user |
+| Incoming replication | Disabled; zero live workers verified |
 
-## Phase 2 — Prepare OVH Target (in progress)
+Five trend/YouTube tables were excluded from the final validated scope: `discovered_trends`, `trend_ideas`, `trend_items`, `trend_videos`, and `volume_points`. Their existing source and target tables/data remain intact. Shared niche, keyword and settings tables remain in scope. Exact table lists are recorded in [replication_scope.json](replication_scope.json).
 
-- [x] Confirm OVH ICU `en-US` support and role capabilities; retain the previously observed source/target collation versions `153.120` / `153.128` as historical validation context.
-- [x] Create the canonical `explainit` target with owner `explainit_admin`, UTF8, and ICU `en-US` (user reported completion).
-- [x] Verify the new target's connectivity, ICU `en-US`, and zero public tables with `prepare_target_schema.py --check-target` before Alembic (user-reported pass).
-- [x] Verify the fresh target's CType, timezone, encoding, and installed collation version separately using the read-only comparison: `en_US.utf8`, `Etc/UTC`, UTF8, ICU `en-US`, version `153.128`.
-- [ ] Configure migration tools, restricted credentials, secure direct connectivity, and target permissions; keep secrets outside Git.
-- [x] Build the target schema with Alembic through `c03_youtube_scan_controls` (user-reported successful launcher completion).
-- [x] Verify actual revisions and compare tables, columns, types, keys, constraints, indexes, enums, and sequences using `compare_schema.py`; review and accept column-order differences for logical replication.
-- [x] Confirm 24 application tables for replication, excluding `alembic_version` and source-only `schema_migrations` tracking metadata.
-- [x] Remove the two target seed rows from `host_sites` and `popular_scan_settings` before the initial copy; user reported both remaining counts as `0`. Preserve target Alembic metadata.
+## Verified results
 
-## Phase 3 — Configure Logical Replication
+The latest read-only validation evidence was collected on **25 October 2026, approximately 11:55-11:58 IST**.
 
-- [x] Obtain the direct Supabase endpoint: `db.kfyztavryuuwagsfrtrs.supabase.co:5432`, database and username `postgres`.
-- [x] Identify the actual OVH PostgreSQL container: `postgres-db`, image `postgres:17` (user-reported running container list).
-- [x] Verify direct source connectivity and replication authentication from the OVH host network using a temporary psql client and `IDENTIFY_SYSTEM`.
-- [x] Create and test the additional IPv6-only network `explainit-migration-ipv6` using a temporary psql client.
-- [x] Attach `postgres-db` to the tested IPv6-only network; verify original IPv4 address/gateway and `127.0.0.1:5432` binding are preserved, with an additional working IPv6 address/gateway.
-- [x] Verify direct replication-protocol connectivity from `postgres-db` using `IDENTIFY_SYSTEM` (user-reported source system/database match).
-- [x] Verify target subscription permissions and worker/slot capacity: superuser/CREATE/subscription access, logical workers 4, total workers 8, sync workers 2, slots 10, zero existing subscriptions.
-- [x] Create source publication `explainit_migration_pub`; user reported 24 tables and the agent verified exact membership and all four published operations read-only.
-- [x] Pass the subscription helper's live read-only preflight: exact publication, empty target, matching revisions, no existing objects, and capacity for all three planned replication workers.
-- [x] Verify slot/sender capacity, including initial-copy workers; create OVH subscription `explainit_migration_sub` with source slot `explainit_migration_slot` using a direct source connection (user-reported successful apply).
-- [x] Confirm the migration slot is active, subscriber apply/two sync workers run, and initial synchronization starts (agent read-only verification).
+| Check | Result |
+| --- | --- |
+| Source / OVH records in retained scope | 431 / 433 |
+| Source IDs missing on OVH | **0** |
+| Identical shared rows | 419 |
+| Changed shared rows | 12, with field differences recorded below |
+| Additional OVH rows | Two leads |
+| Canonically identical tables | 17 of 19 |
+| Owned ID sequences | **All 13 pass**; eight behind counters were corrected |
+| Foreign-key integrity | **Nine checks, zero orphan rows** |
+| Index health | **All 51 indexes valid, ready and live** |
+| Replication state | **Disabled, zero workers** |
 
-## Phase 4 — Initial Data Synchronization
+Six existing leads differ only in `status`, `internal_notes` and `updated_at`; six niche rows differ only in `last_scanned_at`. These live OVH values and the two additional leads were preserved. Current comparisons use independent snapshots of the stopped-source/live-target databases; they do not reconstruct every change during the earlier cutover overlap.
 
-- [ ] Keep FastAPI and background writers on Supabase; allow the initial copy to finish.
-- [ ] Apply the prepared trend/YouTube exclusion (five tables), then use `monitor_replication.py` to verify 19 ready tables, apply recovery, no new errors and source WAL catch-up.
-- [x] Confirm initial synchronization finished for all 24 published tables (`r`), verified live read-only on 2026-10-25 IST. Coordinate any later schema changes on both databases.
+The sequence repair committed successfully. Its original post-commit warning was caused by a verifier formatting bug, now fixed. Read-only verification confirmed stable metadata across transaction boundaries and zero remaining sequence corrections. No repeat repair is needed.
 
-## Phase 5 — Validate Target
+## Completed migration work
 
-- [ ] Compare row counts at a consistent point; validate critical records, foreign-key integrity, UNIQUE/CHECK rules, indexes, and enums.
-- [ ] Validate application queries and FastAPI reads against OVH without application writes to the replication target.
-- [ ] Save validation evidence; repeat final count/integrity checks during the write pause.
+- [x] Assess source schema, versions, keys, locale and replication readiness.
+- [x] Prepare canonical OVH `explainit`, apply Alembic and compare compatible application schemas.
+- [x] Establish SSH administration and direct IPv6 replication connectivity.
+- [x] Create the publication/subscription and finish the original 24 initial copies.
+- [x] Apply the agreed five-table feature exclusion, leaving 19 retained tables.
+- [x] Record the user's switch to live OVH and stopped Supabase writers.
+- [x] Disable incoming replication and verify zero workers.
+- [x] Correct eight ID counters and verify all 13 retained-owned sequences.
+- [x] Compare retained rows and record live OVH field differences without overwriting them.
+- [x] Verify actual foreign-key integrity and index health.
+- [x] Record the user's successful migration sign-off and update completion records.
 
-## Phase 6 — Prepare Cutover & Rollback
+## Validation evidence
 
-- [ ] Prepare target connection settings, deployment steps, smoke tests, and sequence-reconciliation commands.
-- [ ] Persist the subscriber's additional IPv6 network in the OVH deployment configuration so container recreation preserves connectivity.
-- [ ] Define the write-pause window covering FastAPI, workers, schedulers, and manual writers.
-- [ ] Confirm backups/recovery, rollback triggers, and the observation window.
-- [ ] Document rollback before target writes and reconciliation of OVH-only changes if rollback is needed afterward.
+- [Live data and sequence audit](live_target_audit.json)
+- [Foreign-key and index audit](live_target_integrity.json)
+- [Field-level change counts](live_target_field_changes.json)
+- [Sequence repair verification](target_sequence_repair_verification.json)
+- [Latest read-only sequence plan](target_sequence_repair_plan.json)
+- [Original schema comparison](schema_comparison.json)
 
-## Phase 7 — Production Cutover
+## Post-migration follow-ups
 
-- [ ] Stop every source writer; record the final source WAL position and wait until OVH has applied through it with all retained tables synchronized.
-- [ ] Run final source/target count and integrity checks for the retained scope; reconcile its 13 owned target sequences after the prepared exclusion is applied (18 in the original full scope).
-- [ ] Disable the forward subscription after catch-up, before enabling application writes on OVH; keep source writers stopped.
-- [ ] Switch FastAPI and background jobs to OVH, restart/redeploy, and run read-only smoke tests.
-- [ ] Re-enable writes on OVH only after checks pass; verify a controlled write.
+These are tracked separately from the accepted database migration. They are not recorded as performed by the database audits.
 
-## Phase 8 — Post-Cutover Validation
+| Follow-up | Recorded state |
+| --- | --- |
+| Formal application read/create/update smoke tests | No result recorded in this workflow |
+| Recoverable OVH backup and deployment persistence | Confirmation remains separate |
+| Migration subscription/publication/slot cleanup | Objects preserved; deliberate cleanup pending |
+| Temporary credential rotation and final deployment notes | Follow-up pending |
+| Supabase retirement | Separate decision; preserve source data until approved |
 
-- [ ] Verify inserts/sequence IDs, updates, deletes, critical API endpoints, background jobs, and dashboards/admin UI.
-- [ ] Monitor PostgreSQL logs, application errors, and performance; record results.
-
-## Phase 9 — Rollback Window
-
-- [ ] Keep Supabase intact with application writes stopped; monitor retained WAL and manage the migration slot deliberately.
-- [ ] If rollback is required after OVH accepts writes, stop writers and reconcile new changes before switching back.
-- [ ] Confirm OVH stability through the agreed observation window and sign off.
-
-## Phase 10 — Close Migration
-
-- [ ] Remove the migration subscription/publication and verify no migration or synchronization slots remain.
-- [ ] Archive evidence, rotate temporary credentials, and update deployment/architecture documentation.
-- [ ] Retire Supabase only after final approval and retention requirements are met.
-
-Schema changes and sequence state require separate handling: see [PostgreSQL 17 replication restrictions](https://www.postgresql.org/docs/17/logical-replication-restrictions.html). Subscription cleanup and retained-slot behavior are documented in [subscription management](https://www.postgresql.org/docs/17/logical-replication-subscription.html).
+Keep incoming Supabase replication disabled on live OVH. Migration monitors may report `replication_running = false`; that is intentional after this cutover and is not a reason to re-enable it.

@@ -39,6 +39,10 @@ def rows(connection, query, parameters=None):
 
 
 def prepare_snapshot(connection, label):
+    # SET LOCAL is reset by commit/rollback. Normalize the path again for
+    # post-commit checks so regclass defaults retain the same qualification.
+    with connection.cursor() as cursor:
+        cursor.execute("SET LOCAL search_path = pg_catalog")
     identity = rows(connection, """
         SELECT current_database() AS database, current_user AS role,
                current_setting('server_version_num')::int AS version,

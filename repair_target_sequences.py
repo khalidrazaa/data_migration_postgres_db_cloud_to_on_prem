@@ -21,6 +21,7 @@ from start_replication import configuration, connect_read_only, require, revisio
 
 
 OUTPUT = WORKSPACE / 'target_sequence_repair_plan.json'
+APPLY_OUTPUT = WORKSPACE / 'target_sequence_repair_result.json'
 
 
 def utc_now():
@@ -141,7 +142,8 @@ def lock_tables_and_sequences(connection, tables, expected_catalog):
 
 def save_report(report):
     report['finished_at_utc'] = utc_now()
-    OUTPUT.write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+    destination = APPLY_OUTPUT if report.get('requested_apply') else OUTPUT
+    destination.write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
 
 
 def print_plan(repairs):
@@ -249,7 +251,7 @@ def main():
         print(f'Transaction committed: {len(locked_repairs)} sequences restarted without moving backward.')
         print(f'Fresh read-only check: 13 sequences observed; {len(remaining)} remain behind the occupied range.')
         print('Incoming replication remains disabled with zero live workers. No application rows or source data were changed.')
-        print(f'Report: {OUTPUT.name}.')
+        print(f'Report: {APPLY_OUTPUT.name}.')
         return 0 if not remaining else 2
     except PreparationError as error:
         print(str(error), file=sys.stderr)
